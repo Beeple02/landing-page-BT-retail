@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLOOMBERG / NER — Institutional Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --org: #ff8c00;
+  --bg: #080808;
+  --bg2: #0d0d0e;
+  --bg3: #111213;
+  --wht: #ffffff;
+  --txt: #999;
+  --bdr: #1e1e1f;
+  --up: #00c853;
+  --dn: #f44336;
+  --cyn: #00e5ff;
+  --mag: #e040fb;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'Space Mono', monospace;
+  overflow-x: hidden;
+}
+
+/* ── NOISE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 52px;
+  background: rgba(8,8,8,0.92);
+  border-bottom: 1px solid var(--bdr);
+  backdrop-filter: blur(12px);
+}
+
+.nav-brand {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--org);
+  letter-spacing: 2px;
+  text-decoration: none;
+}
+
+.nav-brand span { color: #333; }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #444;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--wht); }
+
+.nav-cta {
+  background: var(--org);
+  color: #000 !important;
+  font-weight: 700;
+  padding: 8px 20px;
+  letter-spacing: 2px;
+}
+
+.nav-cta:hover { background: #ffaa33; color: #000 !important; }
+
+/* ── LIVE DOT ── */
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--up);
+}
+
+.live-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--up);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 120px 80px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-ticker-tape {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: #000;
+  border-bottom: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.tape-inner {
+  display: flex;
+  white-space: nowrap;
+  animation: tape 30s linear infinite;
+  gap: 0;
+}
+
+@keyframes tape {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.tape-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  border-right: 1px solid var(--bdr);
+  font-size: 10px;
+  height: 28px;
+}
+
+.tape-exch {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  background: rgba(255,140,0,0.1);
+  color: var(--org);
+  letter-spacing: 1px;
+}
+
+.tape-exch.tse { background: rgba(0,229,255,0.08); color: var(--cyn); }
+.tape-ticker { color: var(--wht); font-weight: 700; }
+.up { color: var(--up); }
+.dn { color: var(--dn); }
+
+/* hero grid bg — faint lines */
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,140,0,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,140,0,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, #000 20%, transparent 100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 900px;
+}
+
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.hero-tag {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #333;
+  padding: 4px 12px;
+  border: 1px solid #1e1e1f;
+}
+
+.hero-h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(48px, 7vw, 96px);
+  font-weight: 800;
+  color: var(--wht);
+  line-height: 1;
+  margin-bottom: 24px;
+  letter-spacing: -2px;
+}
+
+.hero-h1 .accent { color: var(--org); }
+
+.hero-sub {
+  font-size: 13px;
+  line-height: 2;
+  color: #444;
+  max-width: 500px;
+  margin-bottom: 48px;
+}
+
+.hero-ctas {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.btn-primary {
+  background: var(--org);
+  color: #000;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 14px 32px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: inline-block;
+}
+
+.btn-primary:hover { background: #ffaa33; }
+
+.btn-ghost {
+  color: #444;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 14px 0;
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color 0.2s;
+  display: inline-block;
+}
+
+.btn-ghost:hover { color: var(--wht); }
+
+.hero-price {
+  margin-top: 20px;
+  font-size: 10px;
+  color: #2a2a2a;
+  letter-spacing: 2px;
+}
+
+/* hero screenshot */
+.hero-screenshot {
+  position: absolute;
+  right: -60px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 55%;
+  border: 1px solid var(--bdr);
+  opacity: 0.8;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+
+.hero-screenshot img {
+  width: 100%;
+  display: block;
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--bdr);
+  border-bottom: 1px solid var(--bdr);
+  background: var(--bg2);
+}
+
+.stat-item {
+  padding: 28px 40px;
+  border-right: 1px solid var(--bdr);
+}
+
+.stat-item:last-child { border-right: none; }
+
+.stat-n {
+  font-family: 'Syne', sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--wht);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-n .org { color: var(--org); }
+
+.stat-l {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #333;
+}
+
+/* ── SECTION BASE ── */
+section {
+  padding: 100px 80px;
+  border-bottom: 1px solid var(--bdr);
+}
+
+.section-eyebrow {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--org);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(32px, 4vw, 56px);
+  font-weight: 800;
+  color: var(--wht);
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  font-size: 12px;
+  line-height: 2;
+  color: #444;
+  max-width: 480px;
+}
+
+/* ── FEATURES GRID ── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--bdr);
+  border: 1px solid var(--bdr);
+  margin-top: 60px;
+}
+
+.feature-card {
+  background: var(--bg);
+  padding: 36px 32px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.feature-card:hover { background: var(--bg2); }
+
+.feature-num {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #222;
+  margin-bottom: 20px;
+}
+
+.feature-icon {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--org);
+  margin-bottom: 12px;
+}
+
+.feature-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--wht);
+  margin-bottom: 10px;
+}
+
+.feature-desc {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #444;
+}
+
+/* ── SCREENS SECTION ── */
+#screens { padding: 0; border-bottom: 1px solid var(--bdr); }
+
+.screen-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 480px;
+  border-bottom: 1px solid var(--bdr);
+}
+
+.screen-row:last-child { border-bottom: none; }
+
+.screen-row.reverse { direction: rtl; }
+.screen-row.reverse > * { direction: ltr; }
+
+.screen-info {
+  padding: 60px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.screen-fkey {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #000;
+  background: var(--org);
+  padding: 3px 10px;
+  margin-bottom: 20px;
+}
+
+.screen-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(24px, 3vw, 40px);
+  font-weight: 800;
+  color: var(--wht);
+  line-height: 1.1;
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+
+.screen-desc {
+  font-size: 11px;
+  line-height: 2;
+  color: #444;
+  margin-bottom: 24px;
+}
+
+.screen-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.screen-tag {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #333;
+  border: 1px solid #1a1a1a;
+  padding: 4px 10px;
+}
+
+.screen-img {
+  background: var(--bg2);
+  overflow: hidden;
+  position: relative;
+}
+
+.screen-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  opacity: 0.85;
+  transition: opacity 0.3s, transform 0.4s;
+}
+
+.screen-img:hover img { opacity: 1; transform: scale(1.02); }
+
+/* ── PRICING ── */
+#pricing { background: var(--bg); }
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--bdr);
+  border: 1px solid var(--bdr);
+  margin-top: 60px;
+}
+
+.pricing-card {
+  background: var(--bg);
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.pricing-card.featured {
+  background: var(--bg2);
+}
+
+.pricing-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--org);
+  color: #000;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 5px;
+}
+
+.pricing-tier {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #333;
+  margin-bottom: 24px;
+}
+
+.pricing-price {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 4vw, 56px);
+  font-weight: 800;
+  color: var(--wht);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.pricing-period {
+  font-size: 10px;
+  color: #333;
+  margin-bottom: 32px;
+  letter-spacing: 1px;
+}
+
+.pricing-divider {
+  height: 1px;
+  background: var(--bdr);
+  margin-bottom: 28px;
+}
+
+.pricing-features {
+  list-style: none;
+  margin-bottom: 40px;
+  flex: 1;
+}
+
+.pricing-features li {
+  font-size: 10px;
+  line-height: 1;
+  color: #555;
+  padding: 8px 0;
+  border-bottom: 1px solid #0d0d0e;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pricing-features li::before {
+  content: '→';
+  color: var(--org);
+  flex-shrink: 0;
+}
+
+.pricing-features li.dim { color: #2a2a2a; }
+.pricing-features li.dim::before { color: #1e1e1f; }
+
+/* ── FAQ ── */
+#faq { background: var(--bg2); }
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--bdr);
+  border: 1px solid var(--bdr);
+  margin-top: 60px;
+}
+
+.faq-item {
+  background: var(--bg2);
+  padding: 32px 36px;
+}
+
+.faq-q {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--wht);
+  margin-bottom: 12px;
+}
+
+.faq-a {
+  font-size: 11px;
+  line-height: 2;
+  color: #444;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: #000;
+  padding: 48px 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--bdr);
+}
+
+.footer-brand {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--org);
+  letter-spacing: 2px;
+}
+
+.footer-brand span { color: #222; }
+
+.footer-meta {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #222;
+}
+
+/* ── SCROLLING MARQUEE ── */
+.marquee-section {
+  background: var(--org);
+  padding: 16px 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(0,0,0,0.2);
+  border-bottom: 1px solid rgba(0,0,0,0.2);
+}
+
+.marquee-inner {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 20s linear infinite;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquee-item {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #000;
+  padding: 0 40px;
+}
+
+.marquee-dot {
+  color: rgba(0,0,0,0.3);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  #hero { padding: 100px 32px 60px; }
+  .hero-screenshot { display: none; }
+  section { padding: 60px 32px; }
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .features-grid { grid-template-columns: 1fr; }
+  .screen-row { grid-template-columns: 1fr; }
+  .screen-row.reverse { direction: ltr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .faq-grid { grid-template-columns: 1fr; }
+  footer { flex-direction: column; gap: 16px; text-align: center; }
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">BLOOMBERG<span>/NER</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">FEATURES</a></li>
+    <li><a href="#screens">PAGES</a></li>
+    <li><a href="#pricing">PRICING</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#access" class="nav-cta">GET ACCESS</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-grid"></div>
+
+  <!-- Ticker tape -->
+  <div class="hero-ticker-tape">
+    <div class="tape-inner">
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">BB.A</span><span>173.55</span><span class="up">+0.00%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">RTG</span><span>23.00</span><span class="up">+4.55%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">SRI</span><span>23.92</span><span class="dn">-37.50%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">BB</span><span>20.45</span><span class="up">+31.07%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">GCC</span><span>2.00</span><span class="dn">-8.57%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">NTR</span><span>125.00</span><span style="color:#444">+0.00%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:ECO</span><span>14.46</span><span class="up">+1.84%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:GCC</span><span>29.29</span><span class="up">+22.04%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:GOLD</span><span>57.26</span><span class="dn">-3.47%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:MZEWG</span><span>80.00</span><span style="color:#444">+0.00%</span></span>
+      <!-- duplicate for seamless loop -->
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">BB.A</span><span>173.55</span><span class="up">+0.00%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">RTG</span><span>23.00</span><span class="up">+4.55%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">SRI</span><span>23.92</span><span class="dn">-37.50%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">BB</span><span>20.45</span><span class="up">+31.07%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">GCC</span><span>2.00</span><span class="dn">-8.57%</span></span>
+      <span class="tape-item"><span class="tape-exch">NER</span><span class="tape-ticker">NTR</span><span>125.00</span><span style="color:#444">+0.00%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:ECO</span><span>14.46</span><span class="up">+1.84%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:GCC</span><span>29.29</span><span class="up">+22.04%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:GOLD</span><span>57.26</span><span class="dn">-3.47%</span></span>
+      <span class="tape-item"><span class="tape-exch tse">TSE</span><span class="tape-ticker">TSE:MZEWG</span><span>80.00</span><span style="color:#444">+0.00%</span></span>
+    </div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <div class="live-dot">LIVE</div>
+      <div class="hero-tag">BLOOMBERG / NER TERMINAL</div>
+    </div>
+
+    <h1 class="hero-h1">
+      The terminal<br>
+      DC deserves.<br>
+      <span class="accent">Finally.</span>
+    </h1>
+
+    <p class="hero-sub">
+      Real-time prices across NER and TSE. Full order book depth. Monte Carlo simulation. Holder intelligence. Institutional-grade analytics — built for the DC market.
+    </p>
+
+    <div class="hero-ctas">
+      <a href="#access" class="btn-primary">GET ACCESS →</a>
+      <a href="#screens" class="btn-ghost">SEE ALL PAGES ↓</a>
+    </div>
+    <div class="hero-price">Starting at R$2,500 / month</div>
+  </div>
+
+  <div class="hero-screenshot">
+    <img src="screens/ticker.png" alt="Terminal ticker page" onerror="this.parentElement.style.display='none'">
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-n"><span class="org">14</span></div>
+    <div class="stat-l">TERMINAL PAGES</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-n"><span class="org">17</span></div>
+    <div class="stat-l">SECURITIES TRACKED</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-n">2</div>
+    <div class="stat-l">EXCHANGES — NER + TSE</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-n">24<span style="font-size:50%;color:#333">/7</span></div>
+    <div class="stat-l">LIVE DATA</div>
+  </div>
+</div>
+
+<!-- MARQUEE -->
+<div class="marquee-section">
+  <div class="marquee-inner">
+    <span class="marquee-item">BLOOMBERG / NER TERMINAL</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">REAL-TIME PRICES</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">ORDER BOOK DEPTH</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">MONTE CARLO SIMULATION</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">HOLDER INTELLIGENCE</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">MARKET HEATMAP</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">STRATEGY BACKTESTER</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">LIQUIDITY ANALYSIS</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">ALGO SCANNER</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <!-- duplicate -->
+    <span class="marquee-item">BLOOMBERG / NER TERMINAL</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">REAL-TIME PRICES</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">ORDER BOOK DEPTH</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">MONTE CARLO SIMULATION</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">HOLDER INTELLIGENCE</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">MARKET HEATMAP</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">STRATEGY BACKTESTER</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">LIQUIDITY ANALYSIS</span>
+    <span class="marquee-item marquee-dot">·</span>
+    <span class="marquee-item">ALGO SCANNER</span>
+    <span class="marquee-item marquee-dot">·</span>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-eyebrow">WHAT YOU GET</div>
+  <h2 class="section-title">Everything. In one terminal.</h2>
+  <p class="section-sub">Not a spreadsheet. Not a Discord bot. A real institutional-grade trading terminal built specifically for DC markets.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-num">F2</div>
+      <div class="feature-icon">TICKER</div>
+      <div class="feature-title">Full ticker analysis</div>
+      <div class="feature-desc">Price history with VWAP, SMA, Bollinger. MACD, RSI, volume panels. Order book. Microstructure. Risk profile. Holder intel. All on one screen.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">F3</div>
+      <div class="feature-icon">PORTFOLIO</div>
+      <div class="feature-title">Portfolio analytics</div>
+      <div class="feature-desc">Holdings breakdown, equity curve, allocation pie, P&L by security, stress test, liquidity analysis, attribution. Health score out of 100.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">F5</div>
+      <div class="feature-icon">BACKTEST</div>
+      <div class="feature-title">Strategy backtester</div>
+      <div class="feature-desc">Single ticker, multi-ticker, walk-forward, Monte Carlo with 1000 simulations. Param sensitivity analysis. See exactly how your strategy would have performed.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">F8</div>
+      <div class="feature-icon">HEATMAP</div>
+      <div class="feature-title">Market heatmap</div>
+      <div class="feature-desc">Every security across NER and TSE. Sized by market cap. Colored by % change. Top gainers, top losers, breadth score. Live, refreshes every 90 seconds.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">F10</div>
+      <div class="feature-icon">LIQUIDITY</div>
+      <div class="feature-title">Liquidity & slippage</div>
+      <div class="feature-desc">Full depth curve. Slippage simulator. Bid/ask depth, imbalance, liquidity score. Detected order book walls. Iceberg detection. TWAP execution slicer.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">F11</div>
+      <div class="feature-icon">HOLDERS</div>
+      <div class="feature-title">Holder intelligence</div>
+      <div class="feature-desc">Concentration ranking with HHI scores. Substantial holder alerts. Whale network cross-holdings map. Gini coefficient. Ownership changes in real-time.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENS -->
+<section id="screens" style="padding:80px 0 0">
+  <div style="padding:0 80px 60px">
+    <div class="section-eyebrow">THE PAGES</div>
+    <h2 class="section-title">14 pages.<br>Every angle covered.</h2>
+  </div>
+</section>
+
+<div id="screens">
+
+  <div class="screen-row">
+    <div class="screen-info">
+      <div class="screen-fkey">F2 TICKER</div>
+      <h3 class="screen-title">Everything about a security. One screen.</h3>
+      <p class="screen-desc">Price history with overlays, MACD, RSI, volume. Order book live. Risk profile with Sharpe, annualised vol, max drawdown. Holder intel. All without switching tabs.</p>
+      <div class="screen-tags">
+        <span class="screen-tag">PRICE HISTORY</span>
+        <span class="screen-tag">MACD</span>
+        <span class="screen-tag">RSI</span>
+        <span class="screen-tag">ORDER BOOK</span>
+        <span class="screen-tag">RISK PROFILE</span>
+        <span class="screen-tag">SHAREHOLDERS</span>
+      </div>
+    </div>
+    <div class="screen-img">
+      <img src="screens/ticker.png" alt="Ticker page" onerror="this.style.opacity='0.1'">
+    </div>
+  </div>
+
+  <div class="screen-row reverse">
+    <div class="screen-info">
+      <div class="screen-fkey">F3 PORTFOLIO</div>
+      <h3 class="screen-title">Your portfolio. Fully dissected.</h3>
+      <p class="screen-desc">Holdings with live P&L, allocation donut, equity curve, stress test, attribution, liquidity analysis. Health score. Everything updating live as prices move.</p>
+      <div class="screen-tags">
+        <span class="screen-tag">HOLDINGS</span>
+        <span class="screen-tag">ALLOCATION</span>
+        <span class="screen-tag">P&L BY HOLDING</span>
+        <span class="screen-tag">HEALTH SCORE</span>
+        <span class="screen-tag">STRESS TEST</span>
+      </div>
+    </div>
+    <div class="screen-img">
+      <img src="screens/portfolio.png" alt="Portfolio page" onerror="this.style.opacity='0.1'">
+    </div>
+  </div>
+
+  <div class="screen-row">
+    <div class="screen-info">
+      <div class="screen-fkey">F5 BACKTEST — MONTE CARLO</div>
+      <h3 class="screen-title">1,000 simulations. Instant.</h3>
+      <p class="screen-desc">Run Monte Carlo simulation on any ticker. See the full distribution of outcomes — bear case, median, bull case. Probability of profit. Probability of drawdown exceeding 20%.</p>
+      <div class="screen-tags">
+        <span class="screen-tag">MONTE CARLO</span>
+        <span class="screen-tag">1000 SIMS</span>
+        <span class="screen-tag">OUTCOME DISTRIBUTION</span>
+        <span class="screen-tag">PERCENTILES</span>
+        <span class="screen-tag">PROB PROFIT</span>
+      </div>
+    </div>
+    <div class="screen-img">
+      <img src="screens/montecarlo.png" alt="Monte Carlo page" onerror="this.style.opacity='0.1'">
+    </div>
+  </div>
+
+  <div class="screen-row reverse">
+    <div class="screen-info">
+      <div class="screen-fkey">F1 MARKET — EXCHANGE ANALYTICS</div>
+      <h3 class="screen-title">The full picture. Every security.</h3>
+      <p class="screen-desc">Capital flow and performance table. Vol index (NER-VIX). Average Sharpe. Capital concentration (HHI). Capital distribution chart. Advance/decline analysis.</p>
+      <div class="screen-tags">
+        <span class="screen-tag">CAPITAL FLOW</span>
+        <span class="screen-tag">NER-VIX</span>
+        <span class="screen-tag">HHI</span>
+        <span class="screen-tag">BREADTH SCORE</span>
+        <span class="screen-tag">ADVANCE/DECLINE</span>
+      </div>
+    </div>
+    <div class="screen-img">
+      <img src="screens/exchange.png" alt="Exchange analytics" onerror="this.style.opacity='0.1'">
+    </div>
+  </div>
+
+  <div class="screen-row">
+    <div class="screen-info">
+      <div class="screen-fkey">F11 HOLDERS</div>
+      <h3 class="screen-title">Know who holds what.</h3>
+      <p class="screen-desc">Concentration ranking with HHI scores across every security. Substantial holder alerts for positions over 10%. Whale cross-holdings network. Gini coefficient. Ownership monitoring.</p>
+      <div class="screen-tags">
+        <span class="screen-tag">HHI RANKING</span>
+        <span class="screen-tag">WHALE NETWORK</span>
+        <span class="screen-tag">CROSS-HOLDINGS</span>
+        <span class="screen-tag">GINI COEFFICIENT</span>
+        <span class="screen-tag">SUBSTANTIAL ALERTS</span>
+      </div>
+    </div>
+    <div class="screen-img">
+      <img src="screens/holders.png" alt="Holders intelligence" onerror="this.style.opacity='0.1'">
+    </div>
+  </div>
+
+</div>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="section-eyebrow">PRICING</div>
+  <h2 class="section-title">Your edge. One price.</h2>
+  <p class="section-sub">No hidden fees. No trial. You know what you're getting.</p>
+
+  <div class="pricing-grid">
+
+    <div class="pricing-card">
+      <div class="pricing-tier">RETAIL TERMINAL</div>
+      <div class="pricing-price">R$2,500</div>
+      <div class="pricing-period">per month</div>
+      <div class="pricing-divider"></div>
+      <ul class="pricing-features">
+        <li>All 14 terminal pages</li>
+        <li>Real-time NER prices</li>
+        <li>Real-time TSE prices</li>
+        <li>Full order book depth</li>
+        <li>Strategy backtester</li>
+        <li>Monte Carlo (1,000 sims)</li>
+        <li>Market heatmap</li>
+        <li>Liquidity & slippage analysis</li>
+        <li>Holder intelligence</li>
+        <li>Algo scanner</li>
+        <li>Live portfolio analytics</li>
+        <li class="dim">Client management</li>
+        <li class="dim">Firm dashboard</li>
+        <li class="dim">Multi-portfolio</li>
+      </ul>
+      <a href="#access" class="btn-primary" style="text-align:center">GET ACCESS →</a>
+    </div>
+
+    <div class="pricing-card featured">
+      <div class="pricing-badge">MOST POPULAR</div>
+      <div class="pricing-tier" style="margin-top:28px">ENTERPRISE</div>
+      <div class="pricing-price">R$10,000</div>
+      <div class="pricing-period">per month</div>
+      <div class="pricing-divider"></div>
+      <ul class="pricing-features">
+        <li>Everything in Retail</li>
+        <li>Multi-portfolio management</li>
+        <li>Client management space</li>
+        <li>Firm dashboard</li>
+        <li>Morning brief</li>
+        <li>Cross-portfolio risk</li>
+        <li>Attribution over time</li>
+        <li>Rebalancing queue</li>
+        <li>Client review scheduler</li>
+        <li>Firm-wide realized P&L</li>
+        <li>Client portal links</li>
+        <li>Compliance monitoring</li>
+        <li>Revenue tracking</li>
+        <li>Full data export (JSON)</li>
+      </ul>
+      <a href="#access" class="btn-primary" style="text-align:center">GET ACCESS →</a>
+    </div>
+
+    <div class="pricing-card">
+      <div class="pricing-tier">ATLAS API</div>
+      <div class="pricing-price">R$12,500</div>
+      <div class="pricing-period">per month</div>
+      <div class="pricing-divider"></div>
+      <ul class="pricing-features">
+        <li>Everything in Enterprise</li>
+        <li>Raw API access</li>
+        <li>Tick-level data</li>
+        <li>White-label rights</li>
+        <li>Custom integrations</li>
+        <li>Priority support</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+        <li class="dim">—</li>
+      </ul>
+      <a href="#access" class="btn-ghost" style="display:block;text-align:center;padding:14px 0;border:1px solid #1e1e1f">CONTACT →</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-eyebrow">FAQ</div>
+  <h2 class="section-title">Questions.</h2>
+
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">What exchanges does it cover?</div>
+      <div class="faq-a">NER (17 securities total) and TSE. Both exchanges are live with real-time prices, order books, and full trade history.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is the data actually live?</div>
+      <div class="faq-a">Yes. Prices update in real-time via a live SSE stream. The order book refreshes every few seconds. The ticker tape scrolls live market data.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What currency is the pricing in?</div>
+      <div class="faq-a">Redmont Dollars (R$). The terminal also supports Alexandrian Pounds (A£) at the standard 10:1 rate in the Enterprise settings.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What's the difference between Retail and Enterprise?</div>
+      <div class="faq-a">Retail gives you the full trading terminal — all 14 pages, live data, analytics, backtesting. Enterprise adds portfolio management for multiple clients, a firm dashboard, morning brief, and institutional reporting.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I try it before subscribing?</div>
+      <div class="faq-a">There's a public demo version with live read-only data — you can see everything, but trading is disabled. Ask for the demo link when you get in touch.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How do I get access?</div>
+      <div class="faq-a">Fill out the form below. Access is manual — you'll hear back within 24 hours with your credentials.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCESS FORM -->
+<section id="access" style="background:var(--bg2)">
+  <div style="max-width:560px">
+    <div class="section-eyebrow">GET ACCESS</div>
+    <h2 class="section-title">Ready?</h2>
+    <p class="section-sub" style="margin-bottom:40px">Tell us which tier you want. We'll get back to you within 24 hours.</p>
+
+    <form style="display:flex;flex-direction:column;gap:16px" onsubmit="handleSubmit(event)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label style="font-size:9px;letter-spacing:2px;color:#333;display:block;margin-bottom:8px">DISCORD @</label>
+          <input type="text" placeholder="Beeple02#001" style="width:100%;background:var(--bg);border:1px solid var(--bdr);color:var(--wht);font-family:'Space Mono',monospace;font-size:11px;padding:12px 16px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor='#ff8c00'" onblur="this.style.borderColor='#1e1e1f'">
+        </div>
+        <div>
+          <label style="font-size:9px;letter-spacing:2px;color:#333;display:block;margin-bottom:8px">IGN</label>
+          <input type="text" placeholder="bleeper3058" style="width:100%;background:var(--bg);border:1px solid var(--bdr);color:var(--wht);font-family:'Space Mono',monospace;font-size:11px;padding:12px 16px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor='#ff8c00'" onblur="this.style.borderColor='#1e1e1f'">
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:9px;letter-spacing:2px;color:#333;display:block;margin-bottom:8px">TIER</label>
+        <select style="width:100%;background:var(--bg);border:1px solid var(--bdr);color:var(--wht);font-family:'Space Mono',monospace;font-size:11px;padding:12px 16px;outline:none;appearance:none;cursor:pointer">
+          <option value="retail">RETAIL — R$2,500/month</option>
+          <option value="enterprise">ENTERPRISE — R$10,000/month</option>
+          <option value="atlas">ATLAS API — R$12,500/month</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:9px;letter-spacing:2px;color:#333;display:block;margin-bottom:8px">ANYTHING ELSE</label>
+        <textarea rows="3" placeholder="Questions, use case, etc. (optional)" style="width:100%;background:var(--bg);border:1px solid var(--bdr);color:var(--wht);font-family:'Space Mono',monospace;font-size:11px;padding:12px 16px;outline:none;resize:none;transition:border-color 0.2s" onfocus="this.style.borderColor='#ff8c00'" onblur="this.style.borderColor='#1e1e1f'"></textarea>
+      </div>
+
+      <button type="submit" class="btn-primary" style="border:none;cursor:pointer;width:100%;font-size:12px;padding:16px">SUBMIT REQUEST →</button>
+      <div id="form-status" style="font-size:10px;color:#333;letter-spacing:1px;text-align:center;min-height:20px"></div>
+    </form>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-brand">BLOOMBERG<span>/NER</span></div>
+    <div style="font-size:9px;color:#1a1a1a;letter-spacing:1px;margin-top:4px">INSTITUTIONAL TERMINAL</div>
+  </div>
+  <div class="footer-meta">R$2,500/MO · 17 SECURITIES · NER + TSE · LIVE DATA</div>
+</footer>
+
+<script>
+// Form submit handler — replace with your actual endpoint
+function handleSubmit(e) {
+  e.preventDefault();
+  const st = document.getElementById('form-status');
+  st.style.color = '#ff8c00';
+  st.textContent = 'SENDING...';
+  setTimeout(() => {
+    st.style.color = '#00c853';
+    st.textContent = '✓ REQUEST RECEIVED — WE\'LL BE IN TOUCH WITHIN 24H';
+    e.target.reset();
+  }, 1000);
+}
+
+// Scroll fade-in for screen rows
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.screen-row, .feature-card, .pricing-card, .faq-item').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
